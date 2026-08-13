@@ -1,0 +1,31 @@
+name: docker-wsl
+version: v0.1.0
+description: Runs Devsy Docker workspaces in a local WSL distribution.
+
+options:
+  WSL_DISTRIBUTION:
+    displayName: WSL distribution
+    description: Name of the WSL distribution where Docker is available.
+    required: true
+  AGENT_PATH:
+    displayName: Devsy agent path
+    description: Linux path where Devsy installs its agent in the WSL distribution.
+    default: /tmp/devsy-agent
+
+agent:
+  path: ${AGENT_PATH}
+  driver: docker
+
+exec:
+  init: |-
+    if ! wsl.exe --distribution "${WSL_DISTRIBUTION}" -- sh -c 'command -v docker >/dev/null 2>&1'; then
+      >&2 echo "Docker is not installed or the WSL distribution '${WSL_DISTRIBUTION}' does not exist."
+      exit 1
+    fi
+
+    if ! wsl.exe --distribution "${WSL_DISTRIBUTION}" -- docker info >/dev/null 2>&1; then
+      >&2 echo "Docker is not reachable in the WSL distribution '${WSL_DISTRIBUTION}'."
+      exit 1
+    fi
+  command: |-
+    wsl.exe --distribution "${WSL_DISTRIBUTION}" -- sh -c "${COMMAND}"
