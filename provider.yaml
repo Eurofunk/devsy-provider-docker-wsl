@@ -1,5 +1,5 @@
 name: docker-wsl
-version: v0.1.0
+version: v0.1.1
 description: Runs Devsy Docker workspaces in a local WSL distribution.
 
 options:
@@ -27,5 +27,19 @@ exec:
       >&2 echo "Docker is not reachable in the WSL distribution '${WSL_DISTRIBUTION}'."
       exit 1
     fi
-  command: |-
-    wsl.exe --distribution "${WSL_DISTRIBUTION}" -- sh -c "${COMMAND}"
+  command:
+    - powershell.exe
+    - -NoProfile
+    - -NonInteractive
+    - -Command
+    - |-
+      $tempFile = [IO.Path]::GetTempFileName()
+      try {
+        [IO.File]::WriteAllText($tempFile, $env:COMMAND.Replace("`r`n", "`n"), [Text.UTF8Encoding]::new($false))
+        $windowsPath = $tempFile.Replace('\', '/')
+        $linuxPath = (& wsl.exe --distribution $env:WSL_DISTRIBUTION -- wslpath -a $windowsPath).Trim()
+        & wsl.exe --distribution $env:WSL_DISTRIBUTION -- sh $linuxPath
+        exit $LASTEXITCODE
+      } finally {
+        Remove-Item -Force $tempFile -ErrorAction SilentlyContinue
+      }
